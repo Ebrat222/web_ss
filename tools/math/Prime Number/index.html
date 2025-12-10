@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Prime Number Finder</title>
+</head>
+<body>
+  <h2>🔍 Find Prime Numbers</h2>
+  <input type="number" id="start" placeholder="Start (e.g. 1)">
+  <input type="number" id="end" placeholder="End (e.g. 20)">
+  <button onclick="findPrimes()">Show Primes</button>
+
+  <h3 id="primeList"></h3>
+  <p id="primeCount"></p>
+
+  <script>
+    function isPrime(num) {
+      if (num < 2) return false;
+      for (let i = 2; i <= Math.sqrt(num); i++) {
+        if (num % i === 0) return false;
+      }
+      return true;
+    }
+
+    function findPrimes() {
+      const start = parseInt(document.getElementById('start').value);
+      const end = parseInt(document.getElementById('end').value);
+      const primes = [];
+
+      for (let i = start; i <= end; i++) {
+        if (isPrime(i)) {
+          primes.push(i);
+        }
+      }
+
+      document.getElementById('primeList').textContent = `Primes from ${start} to ${end}: ${primes.join(', ')}`;
+      document.getElementById('primeCount').textContent = `🧮 Total Prime Numbers Found: ${primes.length}`;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GoFile Upload Example</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;max-width:900px;margin:28px auto;padding:18px}
+    .card{border:1px solid #e6e9ee;border-radius:12px;padding:18px;margin-bottom:14px;box-shadow:0 6px 18px rgba(40,40,60,0.03)}
+    input[type=file]{display:block;margin:12px 0}
+    button{background:#0b74de;color:white;border:0;padding:10px 14px;border-radius:8px;cursor:pointer}
+    .small{font-size:0.9rem;color:#555}
+    .links{margin-top:12px}
+    .link-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px dashed #eee}
+    .copy-btn{padding:6px 8px;border-radius:6px;border:1px solid #ddd;background:white;cursor:pointer}
+    progress{width:100%;height:14px}
+  </style>
+</head>
+<body>
+  <h1>GoFile — Upload Example</h1>
+  <div class="card">
+    <div class="small">Account ID and Token (pre-filled from your message). <strong>WARNING:</strong> keep tokens secret. Rotate/regenerate after testing.</div>
+    <label>Account ID (optional): <input id="accountId" value="ada35ee7-8f7f-44e8-ba70-211c70fed6d7" /></label><br />
+    <label>API Token (optional): <input id="token" value="u49vlUfDsPWuVwcLwPw6rOgkA8Sq8bOi" /></label>
+  </div>  <div class="card">
+    <label class="small">Choose file to upload:</label>
+    <input id="fileInput" type="file" />
+    <button id="uploadBtn">Upload to GoFile</button>
+    <div id="status" class="small" style="margin-top:8px"></div>
+    <div id="progressWrap" style="margin-top:10px;display:none"><progress id="progress" value="0" max="100"></progress></div>
+  </div>  <div class="card">
+    <h3>Uploaded files</h3>
+    <div id="links" class="links"></div>
+  </div><script>
+async function getServer(token){
+  try{
+    const res = await fetch('https://api.gofile.io/getServer' + (token?('?token='+encodeURIComponent(token)):''));
+    const json = await res.json();
+    if(json.status === 'ok' && json.data && json.data.server) return json.data.server;
+  }catch(e){console.warn('getServer failed', e)}
+  return null;
+}
+
+function createCopyButton(text){
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.textContent = 'Copy';
+  btn.addEventListener('click', async ()=>{
+    try{ await navigator.clipboard.writeText(text); btn.textContent='Copied!'; setTimeout(()=>btn.textContent='Copy',1200);}catch(e){alert('Copy failed — please select and copy manually.')}
+  });
+  return btn;
+}
+
+function addLinkRow(label, url){
+  const row = document.createElement('div'); row.className='link-row';
+  const a = document.createElement('a'); a.href = url; a.target='_blank'; a.textContent = label || url;
+  row.appendChild(a);
+  row.appendChild(createCopyButton(url));
+  document.getElementById('links').prepend(row);
+}
+
+async function uploadFile(file, token, accountId){
+  const status = document.getElementById('status');
+  status.textContent = 'Preparing upload...';
+
+  // Try to find best server
+  let server = await getServer(token);
+  // Build upload URL — prefer server-specific endpoint if available, otherwise use global upload endpoint
+  let uploadUrl = server ? (`https://${server}.gofile.io/uploadFile`) : 'https://upload.gofile.io/uploadFile';
+
+  // Use XMLHttpRequest so we can track progress
+  return new Promise((resolve, reject)=>{
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', uploadUrl);
+    const form = new FormData();
+    // according to GoFile API: field name 'file' or 'files[]' works; using 'file' here
+    form.append('file', file);
+    if(token) form.append('token', token);
+    if(accountId) form.append('accountId', accountId);
+
+    xhr.upload.addEventListener('progress', (e)=>{
+      if(e.lengthComputable){
+        const pct = Math.round((e.loaded / e.total)*100);
+        document.getElementById('progressWrap').style.display='block';
+        document.getElementById('progress').value = pct;
+        status.textContent = `Uploading — ${pct}%`;
+      }
+    });
+
+    xhr.onreadystatechange = ()=>{
+      if(xhr.readyState === 4){
+        document.getElementById('progressWrap').style.display='none';
+        try{
+          const json = JSON.parse(xhr.responseText);
+          if(json.status === 'ok' && json.data){
+            // data contains files array or direct links depending on API response
+            // common fields: data.downloadPage, data.code, data.directLink
+            // We'll try several fallbacks
+            const d = json.data;
+            let page = d.downloadPage || d.link || (d.files && d.files[0] && d.files[0].link) || null;
+            // direct download link
+            let direct = d.directLink || (d.files && d.files[0] && d.files[0].directLink) || null;
+            if(!page && d.code) page = `https://gofile.io/d/${d.code}`;
+            if(!page && direct) page = direct;
+
+            status.textContent = 'Upload complete.';
+            resolve({json, page, direct});
+          }else{
+            status.textContent = 'Upload failed';
+            reject(json);
+          }
+        }catch(err){
+          status.textContent = 'Unexpected response from server';
+          reject(err);
+        }
+      }
+    };
+
+    xhr.onerror = ()=>{ status.textContent='Network error during upload'; reject(new Error('network')); };
+    xhr.send(form);
+  });
+}
+
+document.getElementById('uploadBtn').addEventListener('click', async ()=>{
+  const input = document.getElementById('fileInput');
+  const token = document.getElementById('token').value.trim();
+  const accountId = document.getElementById('accountId').value.trim();
+  if(!input.files || !input.files[0]) return alert('Please choose a file first');
+  const file = input.files[0];
+  try{
+    const res = await uploadFile(file, token || null, accountId || null);
+    const link = (res.page || (res.direct?res.direct:null));
+    if(link) addLinkRow(file.name, link);
+    else addLinkRow(file.name, JSON.stringify(res.json));
+  }catch(e){
+    console.error(e);
+    alert('Upload failed — check console for details.');
+  }
+});
+
+</script></body>
+</html>

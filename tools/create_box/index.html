@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dynamic Boxes</title>
+  <style>
+    /* Container styling */
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 20px;
+    }
+
+    /* Box styling */
+    .box {
+      background-color: lightblue;
+      border: 2px solid #333;
+      padding: 20px;
+      text-align: center;
+      font-weight: bold;
+      border-radius: 8px;
+      flex: 1 0 100px; /* Responsive size */
+    }
+
+    /* Button styling */
+    button {
+      margin: 20px;
+      padding: 10px 20px;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="box" id="box-1">Box 1</div>
+    <div class="box" id="box-2">Box 2</div>
+    <div class="box" id="box-3">Box 3</div>
+    <div class="box" id="box-4">Box 4</div>
+    <div class="box" id="box-5">Box 5</div>
+  </div>
+
+  <button id="add-btn">Add Boxes 6-10</button>
+
+  <script>
+    // Select the container
+    const container = document.querySelector('.container');
+
+    // Select the button
+    const addButton = document.getElementById('add-btn');
+
+    // Add click event to the button
+    addButton.addEventListener('click', function() {
+      for (let i = 6; i <= 10; i++) {
+        const newBox = document.createElement('div');
+        newBox.classList.add('box');
+        newBox.id = `box-${i}`;
+        newBox.textContent = `Box ${i}`;
+        container.appendChild(newBox);
+      }
+      // Disable button after adding to prevent duplicates
+      addButton.disabled = true;
+      addButton.textContent = 'Boxes Added';
+    });
+  </script>
+
+</body>
+</html>

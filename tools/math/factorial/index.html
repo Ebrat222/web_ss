@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Factorial Calculator</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input, button { font-size: 16px; margin: 10px 0; }
+    #details { margin-top: 10px; font-family: monospace; color: #444; }
+  </style>
+</head>
+<body>
+
+  <h2>Factorial Calculator</h2>
+
+  <input type="number" id="numberInput" placeholder="Enter a number" min="0">
+  <button onclick="calculateFactorial()">Calculate</button>
+
+  <h3 id="resultDisplay">Result will appear here...</h3>
+  <div id="details"></div>
+
+  <script>
+    function calculateFactorial() {
+      const input = document.getElementById('numberInput').value;
+      const num = parseInt(input);
+      const resultEl = document.getElementById('resultDisplay');
+      const detailsEl = document.getElementById('details');
+
+      if (isNaN(num) || num < 0) {
+        resultEl.textContent = "Please enter a non-negative number.";
+        detailsEl.textContent = "";
+        return;
+      }
+
+      let result = 1;
+      let breakdown = "";
+
+      for (let i = num; i > 0; i--) {
+        result *= i;
+        breakdown += (i !== 1) ? `${i} × ` : `${i}`;
+      }
+
+      resultEl.textContent = `${num}! = ${result}`;
+      detailsEl.textContent = `Breakdown: ${breakdown} = ${result}`;
+    }
+  </script>
+
+</body>
+</html>
