@@ -1,0 +1,68 @@
+<html><head><style>
+
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+.flex {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+body {
+	min-height: 10vh;
+}
+
+.card-container {
+	perspective: 3000px;
+}
+
+.card {
+	position: relative;
+	height: 300px;
+	width: 200px;
+	transform-style: preserve-3d;
+	transition: transform 0.6s;
+}
+
+.front, .back {
+	position: absolute;
+	height: 100%;
+	width: 100%;
+	border-radius: 8px;
+	backface-visibility: hidden;
+	color: #fff;
+}
+
+.front {
+	background-color: #007bff;
+	transform: rotateY(0deg);
+}
+
+.back {
+	background-color: #28a745;
+	transform: rotateY(180deg);
+}
+
+.card.flipped {
+	transform: rotateY(180deg);
+}
+
+</style></head><body class="flex">
+
+<div class="card-container">
+	<div class="card">
+		<div class="front flex">Front</div>
+		<div class="back flex">Back</div>
+	</div>
+</div>
+
+<script>
+    document.querySelector('.card').addEventListener('click', function () {
+        this.classList.toggle('flipped');
+    });
+</script>
+
+</body></html>

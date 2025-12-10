@@ -1,0 +1,115 @@
+/* Gradient Color Changing Animation */
+.box1 {
+	border: 2px solid black;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.text {
+  font-family: serif;
+  background: linear-gradient(45deg, #ff0000, #1a53ff, #ea01ff, #fcfc00);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  background-size: 300% 300%;
+  animation: gradient 3s ease infinite;
+}
+
+
+@keyframes gradient {
+0% {
+background-position: 0%;
+}
+50% {
+background-position: 100%;
+}
+
+100% {
+background-position: 0%;
+}
+}
+
+/* Image Scrolling With Sticky */
+
+.images {
+  border: 2px solid black;
+  display: flex;
+  flex-direction: column;
+}
+
+.image {
+  max-height: 15em;
+  width: 100%;
+  object-fit: cover;
+}
+
+#image1 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: white;
+}
+
+#image2 {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: white;
+}
+
+#image3 {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: white;
+}
+
+#image4 {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: white;
+}
+
+#image5 {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: white;
+}
+
+/* Image Scrolling With Sticky (Shortcut) */
+/*
+.images .image {
+  position: sticky;
+  top: 0;
+  background: white;
+}
+
+.images .image:nth-child(1) { z-index: 1; }
+.images .image:nth-child(2) { z-index: 2; }
+.images .image:nth-child(3) { z-index: 3; }
+.images .image:nth-child(4) { z-index: 4; }
+.images .image:nth-child(5) { z-index: 5; }
+*/
+
+/* Space */
+.space1 {
+ height: 100px;
+ border: 2px solid black;
+}
+.space2 {
+	height: 150%;
+	border: 2px solid black;
+}
+
+/* CSS With Calc Function */
+.box2 {
+  border: 2px solid black;
+}
+
+.box3 {
+  width: calc(100% - 150px);
+  border: 2px solid blue;
+}

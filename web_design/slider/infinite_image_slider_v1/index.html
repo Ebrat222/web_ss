@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Infinite Scroll</title>
+  <style>
+	* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  body {
+  position: fixed;
+  width: 100vh;
+  }
+    .scroll-wrapper {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: 16rem;
+      justify-content: stretch;
+      animation: animate 10s linear infinite;
+    }
+
+    img {
+      height: 100px;
+      width: auto;
+      object-fit: cover;
+      margin: 0 8px;
+    }
+
+    @keyframes animate {
+      to {
+        translate: calc(-5 * 16rem);
+      }
+    }
+  </style>
+</head>
+<body>
+    <div class="scroll-wrapper">
+      <!-- Repeat same set for infinite effect -->
+      <img src="/storage/emulated/0/images/natural/image10.jpg" title="natural" />
+      <img src="/storage/emulated/0/images/natural/image1.jpg" title="natural" />
+      <img src="/storage/emulated/0/images/natural/image11.jpg" title="natural" />
+      <img src="/storage/emulated/0/images/natural/image2.jpg" title="natural" />
+      <img src="/storage/emulated/0/images/natural/image3.jpg" title="natural" />
+      <img src="/storage/emulated/0/images/natural/image4.jpg" title="natural" />
+      
+      <img src="/storage/emulated/0/images/natural/image10.jpg" title="natural" />
+      <img src="/storage/emulated/0/images/natural/image1.jpg" title="natural" />
+      <img src="/storage/emulated/0/images/natural/image11.jpg" title="natural" />
+      <img src="/storage/emulated/0/images/natural/image2.jpg" title="natural" />
+      <img src="/storage/emulated/0/images/natural/image3.jpg" title="natural" />
+      <img src="/storage/emulated/0/images/natural/image4.jpg" title="natural" />
+      
+      
+
+    </div>
+</body>
+</html>

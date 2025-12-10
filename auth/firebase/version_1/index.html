@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firebase Auth Web-App</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input { display: block; margin: 10px 0; padding: 8px; width: 90%; }
+    button { padding: 10px 20px; margin: 10px 0; }
+    #home { display: none; margin-top: 20px; }
+  </style>
+</head>
+<body>
+
+  <h2>Firebase Auth Web App</h2>
+
+  <div id="auth">
+    <input type="text" id="username" placeholder="Username">
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button id="signupBtn">Sign Up</button>
+    <button id="loginBtn">Login</button>
+  </div>
+
+  <div id="home">
+    <h3>Hello, <span id="userDisplay"></span>!</h3>
+    <button id="logoutBtn">Logout</button>
+  </div>
+
+  <!-- Firebase Modules -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAQinfTKrG2TWh5YpZt1dB89w1-Ls2btJw",
+      authDomain: "my-test-c5cbb.firebaseapp.com",
+      databaseURL: "https://my-test-c5cbb-default-rtdb.firebaseio.com",
+      projectId: "my-test-c5cbb",
+      storageBucket: "my-test-c5cbb.firebasestorage.app",
+      messagingSenderId: "1054365782560",
+      appId: "1:1054365782560:web:73871594f49935849b2245",
+      measurementId: "G-120VRDFCMM"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    const signupBtn = document.getElementById('signupBtn');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const userDisplay = document.getElementById('userDisplay');
+    const authDiv = document.getElementById('auth');
+    const homeDiv = document.getElementById('home');
+
+    // Sign Up
+    signupBtn.addEventListener('click', () => {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const username = document.getElementById('username').value || "User";
+
+      createUserWithEmailAndPassword(auth, email, password)
+        .then(userCredential => {
+          userCredential.user.displayName = username;
+          alert("Signup successful!");
+        })
+        .catch(error => alert(error.message));
+    });
+
+    // Login
+    loginBtn.addEventListener('click', () => {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      signInWithEmailAndPassword(auth, email, password)
+        .then(userCredential => {
+          alert("Login successful!");
+        })
+        .catch(error => alert(error.message));
+    });
+
+    // Logout
+    logoutBtn.addEventListener('click', () => {
+      signOut(auth)
+        .then(() => alert("Logged out!"))
+        .catch(error => alert(error.message));
+    });
+
+    // Auth State Listener
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        authDiv.style.display = "none";
+        homeDiv.style.display = "block";
+        userDisplay.textContent = user.displayName || user.email;
+      } else {
+        authDiv.style.display = "block";
+        homeDiv.style.display = "none";
+      }
+    });
+
+  </script>
+
+</body>
+</html>

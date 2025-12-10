@@ -1,0 +1,90 @@
+<html><head><style>
+
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+.flex {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+body {
+	min-height: 10vh;
+}
+
+.card-container {
+	perspective: 3000px;
+}
+
+.card {
+	position: relative;
+	height: 300px;
+	width: 200px;
+	transform-style: preserve-3d;
+	transition: transform 0.6s;
+}
+
+.front, .back {
+	position: absolute;
+	height: 100%;
+	width: 100%;
+	border-radius: 8px;
+	backface-visibility: hidden;
+	color: #fff;
+}
+
+.front {
+	background-color: #007bff;
+	transform: rotateY(0deg);
+}
+
+.front-icon {
+	display: flex;
+	justify-content: right;
+	align-items: end;
+	height: 30px;
+	width: 100%;
+	font-size: 20px;
+}
+
+.front-text {
+	height: 268px;
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	
+}
+
+.back {
+	background-color: #28a745;
+	transform: rotateY(180deg);
+}
+
+.card.flipped {
+	transform: rotateY(180deg);
+}
+
+</style></head><body class="flex">
+
+<div class="card-container">
+	<div class="card">
+		<div class="front"><div class="front-icon">ℹ️</div><div class="front-text">Front</div></div>
+		<div class="back flex">Back</div>
+	</div>
+</div>
+
+<script>
+    document.querySelector('.back').addEventListener('click', function () {
+        this.closest('.card').classList.toggle('flipped');
+    });
+    
+    document.querySelector('.front-icon').addEventListener('click', function () {
+        this.closest('.card').classList.toggle('flipped');
+    });
+</script>
+
+</body></html>
