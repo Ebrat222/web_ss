@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * {
+      padding: 0;
+      margin: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 30px;
+      font-family: sans-serif;
+    }
+
+    .plus {
+      font-size: 100px;
+      animation: rotation 2s linear infinite;
+    }
+
+    @keyframes rotation {
+      from {
+        transform: rotate(0deg);
+      }
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      background-color: #4CAF50;
+      color: white;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #388E3C;
+    }
+  </style>
+</head>
+<body>
+  <div class="plus">+</div>
+  <button onclick="speedUp()">Speed Up</button>
+
+  <script>
+    let speed = 2;
+    const plus = document.querySelector('.plus');
+
+    function speedUp() {
+      speed = Math.max(0.1, speed - 0.2);
+      plus.style.animationDuration = `${speed}s`;
+    }
+  </script>
+</body>
+</html>

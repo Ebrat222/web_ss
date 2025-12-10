@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Todo + Firebase</title>
+  <style>
+  :root {
+  --bg: #0f1220;
+  --card: #171a2e;
+  --muted: #8b91a1;
+  --text: #e8ebf3;
+  --accent: #6ea8ff;
+  --accent-2: #43d19e;
+  --danger: #ff6b6b;
+  --border: #242946;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+.wrap { max-width: 900px; margin: 0 auto; padding: 16px; }
+h1 { margin: 16px 0 0; font-size: 28px; }
+.sub { color: var(--muted); margin: 6px 0 16px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+.row { display: flex; align-items: center; flex-wrap: wrap; }
+.gap { gap: 10px; }
+.controls input[type="search"] { flex: 1 1 240px; }
+input[type="text"], input[type="search"], input[type="date"], select {
+  background: #12152a; color: var(--text); border: 1px solid var(--border);
+  padding: 10px 12px; border-radius: 10px; outline: none;
+}
+input::placeholder { color: #98a0b6; }
+.btn { padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; background: #12152a; color: var(--text); }
+.btn.primary { background: var(--accent); color: #041225; border-color: transparent; }
+.btn.ghost { background: transparent; color: var(--text); }
+.btn.danger { background: var(--danger); color: #1c0b0b; border-color: transparent;}
+.list { list-style: none; margin: 12px 0 80px; padding: 0; }
+.item { display: flex; align-items: center; gap: 10px; padding: 10px; border-bottom: 1px dashed var(--border); }
+.item:last-child { border-bottom: none; }
+.title { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title.done { text-decoration: line-through; color: var(--muted); }
+.badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+.badge.green { color: #0fd4a5; border-color: #115544; background: #0f2a22; }
+.row-right { display: flex; align-items: center; gap: 6px; }
+.chk { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.icon { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: #11152a; color: var(--text); cursor: pointer; }
+.icon:hover { background: #0e1330; }
+.foot { color: var(--muted); margin-bottom: 30px; }
+@media (hover: hover) { .item:hover { background: rgba(255,255,255,0.02); border-radius: 10px; } }
+</style>
+</head>
+<body>
+  <header class="wrap">
+    <h1>✅ Todo</h1>
+    <p class="sub">Live sync with Firebase Realtime Database</p>
+  </header>
+
+  <main class="wrap">
+    <!-- Add form -->
+    <form id="addForm" class="card row gap">
+      <input id="titleInput" type="text" placeholder="What needs to be done?" autocomplete="off" required />
+      <textarea id="taskDetails" placeholder="Enter task details"></textarea>
+      <input id="dueInput" type="date" />
+      <button type="submit" class="btn primary">Add</button>
+    </form>
+
+    <!-- Controls -->
+    <section class="row gap controls card">
+      <input id="searchInput" type="search" placeholder="Search tasks..." />
+      <select id="sortSelect" title="Sort">
+        <option value="title-asc">Title A→Z</option>
+        <option value="title-desc">Title Z→A</option>
+        <option value="date-new">Date New→Old</option>
+        <option value="date-old">Date Old→New</option>
+      </select>
+      <label class="chk">
+        <input id="showCompleted" type="checkbox" />
+        <span>Show completed only</span>
+      </label>
+    </section>
+
+    <!-- List -->
+    <ul id="taskList" class="list card"></ul>
+  </main>
+
+  <footer class="wrap foot">
+    <small>Tip: Tap the checkbox to mark done. Long-press Edit to change date only.</small>
+  </footer>
+  <script type="module">
+// app.js (ES Modules + Firebase v9 modular SDK via CDN)
+
+// 1) Import Firebase modules from CDN
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+import {
+  getDatabase, ref, push, onValue, update, remove, serverTimestamp
+} from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js';
+
+// 2) Your Firebase config
+// TODO: Replace with your actual config from Firebase Console > Project Settings
+const firebaseConfig = {
+  apiKey: "AIzaSyAQinfTKrG2TWh5YpZt1dB89w1-Ls2btJw",
+  authDomain: "my-test-c5cbb.firebaseapp.com",
+  databaseURL: "https://my-test-c5cbb-default-rtdb.firebaseio.com",
+  projectId: "my-test-c5cbb",
+  storageBucket: "my-test-c5cbb.firebasestorage.app",
+  messagingSenderId: "1054365782560",
+  appId: "1:1054365782560:web:73871594f49935849b2245"
+};
+
+// 3) Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// 4) DOM references
+const addForm = document.getElementById('addForm');
+const titleInput = document.getElementById('titleInput');
+const dueInput = document.getElementById('dueInput');
+const searchInput = document.getElementById('searchInput');
+const sortSelect = document.getElementById('sortSelect');
+const showCompleted = document.getElementById('showCompleted');
+const taskList = document.getElementById('taskList');
+
+// 5) Local state cache (we always render from this array)
+let tasks = []; // each item: { id, title, completed, createdAt, dueDate? }
+
+// 6) Helpers
+const toMs = (dateStr) => {
+  if (!dateStr) return null;
+  // Normalize to local midnight to avoid timezone surprises
+  const dt = new Date(dateStr + 'T00:00:00');
+  return isNaN(dt) ? null : dt.getTime();
+};
+
+const fmtDate = (ms) => {
+  if (!ms) return '';
+  const d = new Date(ms);
+  // e.g., 22 Aug 2025
+  return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const clean = (s) => (s || '').trim();
+
+// 7) Live subscription to /tasks
+// বাংলা: রিয়েল‑টাইম আপডেটের জন্য onValue ব্যবহার করা হয়েছে।
+const tasksRef = ref(db, 'tasks');
+onValue(tasksRef, (snap) => {
+  const val = snap.val() || {};
+  tasks = Object.entries(val).map(([id, v]) => ({ id, ...v }));
+  render();
+});
+
+// 8) Add new task
+addForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const title = clean(titleInput.value);
+  if (!title) return;
+
+  const dueDate = toMs(dueInput.value);
+  // serverTimestamp() is a placeholder value; RTDB will set it to server time
+  const newTask = {
+    title,
+    completed: false,
+    createdAt: serverTimestamp(),
+    // Only save dueDate if provided
+    ...(dueDate ? { dueDate } : {})
+  };
+
+  await push(tasksRef, newTask);
+  titleInput.value = '';
+  dueInput.value = '';
+});
+
+// 9) Render list with search + sort + optional completed filter
+function render() {
+  const q = clean(searchInput.value).toLowerCase();
+  const sort = sortSelect.value;
+  const onlyDone = showCompleted.checked;
+
+  let view = tasks.slice();
+
+  if (q) {
+    view = view.filter(t => (t.title || '').toLowerCase().includes(q));
+  }
+  if (onlyDone) {
+    view = view.filter(t => !!t.completed);
+  }
+
+  // Sort logic
+  const byTitle = (a, b) => (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' });
+  const byDate = (a, b) => {
+    // Prefer dueDate; fallback to createdAt; undefined last
+    const ad = a.dueDate ?? a.createdAt ?? 0;
+    const bd = b.dueDate ?? b.createdAt ?? 0;
+    return ad - bd;
+  };
+
+  if (sort === 'title-asc') view.sort(byTitle);
+  else if (sort === 'title-desc') view.sort((a, b) => -byTitle(a, b));
+  else if (sort === 'date-old') view.sort(byDate);
+  else if (sort === 'date-new') view.sort((a, b) => -byDate(a, b));
+
+  // Build HTML
+  taskList.innerHTML = '';
+  if (!view.length) {
+    const li = document.createElement('li');
+    li.className = 'item';
+    li.innerHTML = `<span class="title" style="color: var(--muted)">No tasks found</span>`;
+    taskList.appendChild(li);
+    return;
+  }
+
+  for (const t of view) {
+    const li = document.createElement('li');
+    li.className = 'item';
+    li.dataset.id = t.id;
+
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.className = 'icon';
+    chk.checked = !!t.completed;
+    chk.title = 'Mark done';
+
+    const title = document.createElement('span');
+    title.className = 'title' + (t.completed ? ' done' : '');
+    title.textContent = t.title || '(untitled)';
+
+    const right = document.createElement('div');
+    right.className = 'row-right';
+
+    // Due/Date badge
+    const when = document.createElement('span');
+    const show = t.dueDate || t.createdAt;
+    when.className = 'badge' + (t.dueDate ? ' green' : '');
+    when.textContent = t.dueDate ? `Due ${fmtDate(t.dueDate)}` : `Added ${fmtDate(t.createdAt)}`;
+
+    // Edit
+    const btnEdit = document.createElement('button');
+    btnEdit.className = 'icon';
+    btnEdit.textContent = '✏️ Edit';
+    btnEdit.title = 'Edit title and date';
+
+    // Delete
+    const btnDel = document.createElement('button');
+    btnDel.className = 'icon';
+    btnDel.textContent = '🗑️ Delete';
+    btnDel.title = 'Delete task';
+
+    right.appendChild(when);
+    right.appendChild(btnEdit);
+    right.appendChild(btnDel);
+
+    li.appendChild(chk);
+    li.appendChild(title);
+    li.appendChild(right);
+
+    taskList.appendChild(li);
+  }
+}
+
+// 10) Event delegation for item interactions
+taskList.addEventListener('click', async (e) => {
+  const li = e.target.closest('li.item');
+  if (!li) return;
+  const id = li.dataset.id;
+  const taskRef = ref(db, `tasks/${id}`);
+
+  // Delete
+  if (e.target.matches('.icon') && e.target.textContent.includes('Delete')) {
+    if (confirm('Delete this task?')) {
+      await remove(taskRef);
+    }
+    return;
+  }
+
+  // Edit (title + date via prompts for simplicity)
+  if (e.target.matches('.icon') && e.target.textContent.includes('Edit')) {
+    const current = tasks.find(x => x.id === id) || {};
+    const newTitle = prompt('Update title:', current.title || '') ?? '';
+    const trimmed = clean(newTitle);
+    if (!trimmed) return; // cancel if empty
+
+    // Quick way to edit date: pass empty to clear
+    const currDateStr = current.dueDate ? new Date(current.dueDate).toISOString().slice(0,10) : '';
+    const dateStr = prompt('Update due date (YYYY-MM-DD). Leave blank to clear:', currDateStr) ?? currDateStr;
+    const dueMs = clean(dateStr) ? toMs(clean(dateStr)) : null;
+
+    const patch = { title: trimmed };
+    if (dueMs) patch.dueDate = dueMs; else patch.dueDate = null;
+
+    await update(taskRef, patch);
+    return;
+  }
+});
+
+// Separate change handler for checkbox toggle (mark done)
+taskList.addEventListener('change', async (e) => {
+  if (e.target.type !== 'checkbox') return;
+  const li = e.target.closest('li.item');
+  if (!li) return;
+  const id = li.dataset.id;
+  const taskRef = ref(db, `tasks/${id}`);
+  await update(taskRef, { completed: e.target.checked });
+});
+
+// 11) Controls: search, sort, showCompleted
+searchInput.addEventListener('input', render);
+sortSelect.addEventListener('change', render);
+showCompleted.addEventListener('change', render);
+
+// 12) Quality-of-life: Enter focuses add button, autofocus title
+titleInput.focus();
+</script>
+</body>
+</html>

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Todo + Firebase — Polished UI</title>
+  <style>
+    :root {
+      --bg: #0f1220;
+      --card: #161a2d;
+      --muted: #8b91a1;
+      --text: #e8ebf3;
+      --accent: #6ea8ff;
+      --accent-2: #43d19e;
+      --danger: #ff6b6b;
+      --border: #232746;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 16px; }
+    h1 { margin: 16px 0 0; font-size: clamp(20px, 4vw, 32px); letter-spacing: .3px; }
+    .sub { color: var(--muted); margin: 6px 0 16px; font-size: clamp(12px, 2.2vw, 14px); }
+
+    /* Cards */
+    .card { background: linear-gradient(180deg, rgba(22,26,45,.9), rgba(18,21,40,.9)); border: 1px solid var(--border); border-radius: 14px; padding: 12px; box-shadow: var(--shadow); }
+
+    /* Form layout */
+    #addForm { display: grid; gap: 10px; grid-template-columns: 1fr; }
+    @media (min-width: 720px) {
+      #addForm { grid-template-columns: 2fr 2fr 1fr auto; align-items: start; }
+      #taskDetails { grid-column: 2 / span 1; }
+    }
+
+    /* Inputs */
+    input[type="text"], input[type="search"], input[type="date"], select, textarea {
+      background: #12152a; color: var(--text); border: 1px solid var(--border);
+      padding: 10px 12px; border-radius: 10px; outline: none; width: 100%;
+    }
+    input::placeholder, textarea::placeholder { color: #9aa1b7; }
+
+    /* Requested: fixed height/width & text size for titleInput + taskDetails */
+    #titleInput { height: 44px; line-height: 44px; font-size: clamp(14px, 3.2vw, 16px); max-width: 100%; }
+    #taskDetails { min-height: 110px; max-height: 260px; font-size: clamp(14px, 3vw, 15.5px); resize: vertical; }
+
+    .btn { padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; background: #12152a; color: var(--text); }
+    .btn.primary { background: var(--accent); color: #041225; border-color: transparent; }
+    .btn.ghost { background: transparent; color: var(--text); }
+    .btn.danger { background: var(--danger); color: #1c0b0b; border-color: transparent;}
+
+    /* Controls */
+    .row { display: flex; align-items: center; flex-wrap: wrap; }
+    .gap { gap: 10px; }
+    .controls input[type="search"] { flex: 1 1 240px; }
+
+    /* List */
+    .list { list-style: none; margin: 12px 0 100px; padding: 0; }
+    .item { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 12px; border-bottom: 1px dashed var(--border); }
+    .item:last-child { border-bottom: none; }
+
+    /* Left mark (checkbox) */
+    .mark { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 8px; border: 1px solid var(--border); background: #11152a; cursor: pointer; }
+    .mark input { accent-color: var(--accent-2); width: 18px; height: 18px; }
+
+    /* Center title — ellipsis if long */
+    .title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .title.done { text-decoration: line-through; color: var(--muted); }
+
+    /* Right: badge + info icon */
+    .row-right { display: inline-flex; align-items: center; gap: 6px; }
+    .badge { font-size: 12px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+    .badge.green { color: #0fd4a5; border-color: #115544; background: #0f2a22; }
+
+    .icon { padding: 8px 10px; border-radius: 999px; border: 1px solid var(--border); background: #11152a; color: var(--text); cursor: pointer; }
+    .icon:hover { background: #0e1330; }
+    .icon.info { width: 34px; height: 34px; display: grid; place-items: center; font-weight: 700; }
+
+    .err { color: var(--danger); margin: 8px 0 0; }
+    .foot { color: var(--muted); margin-bottom: 30px; }
+
+    @media (hover: hover) { .item:hover { background: rgba(255,255,255,0.03); border-radius: 12px; } }
+
+    /* Details dialog */
+    dialog::backdrop { background: rgba(0,0,0,.5); }
+    dialog.dialog { border: none; padding: 0; background: transparent; }
+    .dialog-card { width: min(720px, calc(100vw - 24px)); background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; }
+    .dlg-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+    .dlg-title { font-size: 18px; margin: 0; }
+    .dlg-body { padding: 14px 16px; }
+    .kv { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+    .kv strong { color: var(--text); font-weight: 600; }
+    .full-details { white-space: pre-wrap; color: var(--text); background: #10142a; border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-top: 8px; max-height: 40vh; overflow: auto; }
+    .edit-grid { display: grid; gap: 10px; grid-template-columns: 1fr; }
+    .dlg-foot { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <header class="wrap">
+    <h1>✅ Todo List</h1>
+    <p class="sub">Live sync with Firebase Realtime Database</p>
+  </header>
+
+  <main class="wrap">
+    <!-- Add form -->
+    <form id="addForm" class="card">
+      <input id="titleInput" type="text" placeholder="Enter Task Title" autocomplete="off" required />
+      <textarea id="taskDetails" placeholder="Enter task details"></textarea>
+      <input id="dueInput" type="date" />
+      <button type="submit" class="btn primary">Add</button>
+      <span id="err" class="err" role="alert" aria-live="polite"></span>
+    </form>
+
+    <!-- Controls -->
+    <section class="row gap controls card" aria-label="Controls">
+      <input id="searchInput" type="search" placeholder="Search tasks..." />
+      <select id="sortSelect" title="Sort">
+        <option value="title-asc">Title A→Z</option>
+        <option value="title-desc">Title Z→A</option>
+        <option value="date-new">Date New→Old</option>
+        <option value="date-old">Date Old→New</option>
+      </select>
+      <label class="chk">
+        <input id="showCompleted" type="checkbox" />
+        <span>Show completed only</span>
+      </label>
+    </section>
+
+    <!-- List -->
+    <ul id="taskList" class="list card" aria-live="polite"></ul>
+  </main>
+
+  <footer class="wrap foot">
+    <small>Tip: Tap the left checkbox to mark done. Tap the ⓘ icon to view or edit details.</small>
+  </footer>
+
+  <!-- Details / Edit Dialog -->
+  <dialog id="taskDialog" class="dialog">
+    <div class="dialog-card" role="document">
+      <header class="dlg-head">
+        <h2 class="dlg-title" id="dlgTitle">Task</h2>
+        <button type="button" class="icon" id="dlgClose" aria-label="Close">✕</button>
+      </header>
+      <section class="dlg-body">
+        <div id="dlgView">
+          <div class="kv">Due: <strong id="dlgDue">—</strong></div>
+          <div class="kv">Created: <strong id="dlgCreated">—</strong></div>
+          <div class="kv">Completed: <strong id="dlgDone">No</strong></div>
+          <div class="full-details" id="dlgDetails">No details</div>
+        </div>
+
+        <div id="dlgEdit" hidden>
+          <div class="edit-grid">
+            <input id="editTitle" type="text" placeholder="Title" />
+            <textarea id="editDetails" placeholder="Details"></textarea>
+            <input id="editDate" type="date" />
+          </div>
+        </div>
+      </section>
+      <footer class="dlg-foot">
+        <button type="button" class="btn" id="dlgToggleEdit">Edit</button>
+        <button type="button" class="btn primary" id="dlgSave" hidden>Save</button>
+        <button type="button" class="btn danger" id="dlgDelete">Remove</button>
+        <button type="button" class="btn ghost" id="dlgClose2">Close</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <script type="module">
+    // ===== Firebase App (v9 Modular) =====
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+    import { getDatabase, ref, push, onValue, update, remove } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js';
+
+    // Your config (unchanged)
+    const firebaseConfig = {
+      apiKey: "AIzaSyDgtyOrOOq9pZG481K8WADRLF0H2Nya5F0",
+      authDomain: "my-test-c5cbb.firebaseapp.com",
+      databaseURL: "https://my-test-c5cbb-default-rtdb.firebaseio.com",
+      projectId: "my-test-c5cbb",
+      storageBucket: "my-test-c5cbb.appspot.com",
+      messagingSenderId: "1054365782560",
+      appId: "1:1054365782560:web:73871594f49935849b2245"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // ===== DOM =====
+    const addForm = document.getElementById('addForm');
+    const titleInput = document.getElementById('titleInput');
+    const taskDetails = document.getElementById('taskDetails');
+    const dueInput = document.getElementById('dueInput');
+    const searchInput = document.getElementById('searchInput');
+    const sortSelect = document.getElementById('sortSelect');
+    const showCompleted = document.getElementById('showCompleted');
+    const taskList = document.getElementById('taskList');
+    const errEl = document.getElementById('err');
+
+    // Dialog elements
+    const dlg = document.getElementById('taskDialog');
+    const dlgTitle = document.getElementById('dlgTitle');
+    const dlgDue = document.getElementById('dlgDue');
+    const dlgCreated = document.getElementById('dlgCreated');
+    const dlgDone = document.getElementById('dlgDone');
+    const dlgDetails = document.getElementById('dlgDetails');
+    const dlgView = document.getElementById('dlgView');
+    const dlgEdit = document.getElementById('dlgEdit');
+    const editTitle = document.getElementById('editTitle');
+    const editDetails = document.getElementById('editDetails');
+    const editDate = document.getElementById('editDate');
+    const dlgToggleEdit = document.getElementById('dlgToggleEdit');
+    const dlgSave = document.getElementById('dlgSave');
+    const dlgDelete = document.getElementById('dlgDelete');
+    const dlgClose = document.getElementById('dlgClose');
+    const dlgClose2 = document.getElementById('dlgClose2');
+
+    // ===== State =====
+    let tasks = []; // { id, title, details?, completed, createdAt, dueDate? }
+    let activeTaskId = null;
+
+    // ===== Helpers =====
+    const toMs = (dateStr) => {
+      if (!dateStr) return null;
+      const dt = new Date(dateStr + 'T00:00:00');
+      return isNaN(dt) ? null : dt.getTime();
+    };
+    const fmtDate = (ms) => {
+      if (!ms) return '';
+      const d = new Date(ms);
+      return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+    const clean = (s) => (s || '').trim();
+    const showError = (msg) => { errEl.textContent = msg || ''; };
+
+    // ===== Live subscription =====
+    const tasksRef = ref(db, 'tasks');
+    onValue(tasksRef, (snap) => {
+      const val = snap.val() || {};
+      tasks = Object.entries(val).map(([id, v]) => ({ id, ...v }));
+      render();
+    }, (err) => {
+      console.error(err);
+      showError('Realtime subscription failed.');
+    });
+
+    // ===== Add Task =====
+    addForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      showError('');
+      try {
+        const title = clean(titleInput.value);
+        if (!title) { showError('Please enter a title.'); return; }
+        const details = clean(taskDetails.value);
+        const dueDate = toMs(dueInput.value);
+
+        const newTask = {
+          title,
+          ...(details ? { details } : {}),
+          completed: false,
+          createdAt: Date.now(),
+          ...(dueDate ? { dueDate } : {}),
+        };
+        await push(tasksRef, newTask);
+
+        // reset
+        titleInput.value = '';
+        taskDetails.value = '';
+        dueInput.value = '';
+      } catch (err) {
+        console.error(err);
+        showError('Add failed. Check console.');
+      }
+    });
+
+    // ===== Render =====
+    function render() {
+      const q = clean(searchInput.value).toLowerCase();
+      const sort = sortSelect.value;
+      const onlyDone = showCompleted.checked;
+
+      let view = tasks.slice();
+
+      if (q) {
+        view = view.filter(t => (t.title || '').toLowerCase().includes(q) || (t.details || '').toLowerCase().includes(q));
+      }
+      if (onlyDone) view = view.filter(t => !!t.completed);
+
+      const byTitle = (a, b) => (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' });
+      const byDate = (a, b) => {
+        const ad = a.dueDate ?? a.createdAt ?? 0;
+        const bd = b.dueDate ?? b.createdAt ?? 0;
+        return ad - bd;
+      };
+
+      if (sort === 'title-asc') view.sort(byTitle);
+      else if (sort === 'title-desc') view.sort((a, b) => -byTitle(a, b));
+      else if (sort === 'date-old') view.sort(byDate);
+      else if (sort === 'date-new') view.sort((a, b) => -byDate(a, b));
+
+      taskList.innerHTML = '';
+
+      if (!view.length) {
+        const li = document.createElement('li');
+        li.className = 'item';
+        li.innerHTML = '<span class="title" style="color: var(--muted);">No tasks found</span>';
+        taskList.appendChild(li);
+        return;
+      }
+
+      for (const t of view) {
+        const li = document.createElement('li');
+        li.className = 'item';
+        li.dataset.id = t.id;
+
+        // Left mark (checkbox)
+        const mark = document.createElement('label');
+        mark.className = 'mark';
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.checked = !!t.completed;
+        chk.title = 'Mark done';
+        mark.appendChild(chk);
+
+        // Center title (ellipsis if long)
+        const title = document.createElement('div');
+        title.className = 'title' + (t.completed ? ' done' : '');
+        title.textContent = t.title || '(untitled)';
+
+        // Right side: date badge + info icon
+        const right = document.createElement('div');
+        right.className = 'row-right';
+        const when = document.createElement('span');
+        when.className = 'badge' + (t.dueDate ? ' green' : '');
+        when.textContent = t.dueDate ? `Due ${fmtDate(t.dueDate)}` : `Added ${fmtDate(t.createdAt)}`;
+        const info = document.createElement('button');
+        info.type = 'button';
+        info.className = 'icon info';
+        info.title = 'Details';
+        info.setAttribute('aria-label','Details');
+        info.textContent = 'ⓘ';
+        right.appendChild(when);
+        right.appendChild(info);
+
+        li.appendChild(mark);
+        li.appendChild(title);
+        li.appendChild(right);
+        taskList.appendChild(li);
+      }
+    }
+
+    // ===== Item interactions =====
+    taskList.addEventListener('click', async (e) => {
+      const li = e.target.closest('li.item');
+      if (!li) return;
+      const id = li.dataset.id;
+      const taskRef = ref(db, `tasks/${id}`);
+
+      // Open details dialog via info icon
+      if (e.target.matches('button.icon.info')) {
+        const t = tasks.find(x => x.id === id);
+        if (!t) return;
+        activeTaskId = id;
+        populateDialog(t);
+        openDialog();
+        return;
+      }
+    });
+
+    // Toggle complete
+    taskList.addEventListener('change', async (e) => {
+      if (e.target.type !== 'checkbox') return;
+      const li = e.target.closest('li.item');
+      if (!li) return;
+      const id = li.dataset.id;
+      const taskRef = ref(db, `tasks/${id}`);
+      try { await update(taskRef, { completed: e.target.checked }); } catch (err) { console.error(err); showError('Toggle failed.'); }
+    });
+
+    // Controls
+    searchInput.addEventListener('input', render);
+    sortSelect.addEventListener('change', render);
+    showCompleted.addEventListener('change', render);
+
+    // ===== Dialog helpers =====
+    function populateDialog(t) {
+      dlgTitle.textContent = t.title || '(untitled)';
+      dlgDue.textContent = t.dueDate ? fmtDate(t.dueDate) : '—';
+      dlgCreated.textContent = t.createdAt ? fmtDate(t.createdAt) : '—';
+      dlgDone.textContent = t.completed ? 'Yes' : 'No';
+      dlgDetails.textContent = t.details || 'No details';
+
+      // Prefill edit fields
+      editTitle.value = t.title || '';
+      editDetails.value = t.details || '';
+      editDate.value = t.dueDate ? new Date(t.dueDate).toISOString().slice(0,10) : '';
+
+      // View mode by default
+      dlgView.hidden = false;
+      dlgEdit.hidden = true;
+      dlgSave.hidden = true;
+      dlgToggleEdit.textContent = 'Edit';
+    }
+
+    function openDialog() {
+      if (typeof dlg.showModal === 'function') dlg.showModal();
+      else dlg.setAttribute('open', '');
+    }
+    function closeDialog() {
+      if (typeof dlg.close === 'function') dlg.close();
+      else dlg.removeAttribute('open');
+      activeTaskId = null;
+    }
+
+    // Dialog events
+    dlgToggleEdit.addEventListener('click', () => {
+      const isEditing = !dlgEdit.hidden;
+      if (isEditing) {
+        // switch to view
+        dlgEdit.hidden = true; dlgView.hidden = false; dlgSave.hidden = true; dlgToggleEdit.textContent = 'Edit';
+      } else {
+        dlgEdit.hidden = false; dlgView.hidden = true; dlgSave.hidden = false; dlgToggleEdit.textContent = 'Cancel Edit';
+      }
+    });
+
+    dlgSave.addEventListener('click', async () => {
+      if (!activeTaskId) return;
+      const taskRef = ref(db, `tasks/${activeTaskId}`);
+      const newTitle = clean(editTitle.value);
+      if (!newTitle) { alert('Title is required.'); return; }
+      const details = clean(editDetails.value);
+      const dueMs = clean(editDate.value) ? toMs(editDate.value) : null;
+
+      const patch = { title: newTitle, details };
+      patch.dueDate = (dueMs !== null) ? dueMs : null; // null removes in RTDB
+
+      try {
+        await update(taskRef, patch);
+        const t = tasks.find(x => x.id === activeTaskId);
+        if (t) populateDialog({ ...t, ...patch });
+        dlgEdit.hidden = true; dlgView.hidden = false; dlgSave.hidden = true; dlgToggleEdit.textContent = 'Edit';
+      } catch (err) {
+        console.error(err);
+        alert('Update failed.');
+      }
+    });
+
+    function confirmDelete() {
+      return confirm('Delete this task?');
+    }
+
+    dlgDelete.addEventListener('click', async () => {
+      if (!activeTaskId) return;
+      if (!confirmDelete()) return;
+      try {
+        await remove(ref(db, `tasks/${activeTaskId}`));
+        closeDialog();
+      } catch (err) {
+        console.error(err);
+        alert('Delete failed.');
+      }
+    });
+
+    dlgClose.addEventListener('click', closeDialog);
+    dlgClose2.addEventListener('click', closeDialog);
+
+    // Autofocus first input
+    titleInput.focus();
+  </script>
+</body>
+</html>

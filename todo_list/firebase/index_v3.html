@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Todo + Firebase — Final Pro</title>
+  <style>
+    /* ===== THEME TOKENS ===== */
+    :root {
+      --bg: #0f1220;
+      --card: #161a2d;
+      --muted: #8b91a1;
+      --text: #e8ebf3;
+      --accent: #6ea8ff;
+      --accent-2: #43d19e;
+      --danger: #ff6b6b;
+      --border: #232746;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+
+      /* Priority (balanced, readable) */
+      --prio-high: #ff595e;   /* strong red */
+      --prio-med:  #ffca3a;   /* warm yellow */
+      --prio-low:  #8ac926;   /* fresh green */
+    }
+    [data-theme="light"] {
+      --bg: #f6f8fb;
+      --card: #ffffff;
+      --text: #1a1b22;
+      --muted: #61667a;
+      --border: #e5e7ef;
+      --shadow: 0 8px 24px rgba(16,24,40,.08);
+    }
+
+    /* ===== BASE ===== */
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 16px; }
+    h1 { margin: 16px 0 0; font-size: clamp(20px, 4vw, 32px); letter-spacing: .3px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .sub { color: var(--muted); margin: 6px 0 16px; font-size: clamp(12px, 2.2vw, 14px); }
+
+    .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); cursor: pointer; }
+    .pill:disabled { opacity: .6; cursor: not-allowed; }
+    .row { display: flex; align-items: center; flex-wrap: wrap; }
+    .gap { gap: 10px; }
+
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px; box-shadow: var(--shadow); }
+
+    /* ===== FORM ===== */
+    #addForm { display: grid; gap: 10px; grid-template-columns: 1fr; }
+    @media (min-width: 780px) {
+      #addForm { grid-template-columns: 2fr 2fr 1fr 1fr auto; align-items: start; }
+      #taskDetails { grid-column: 2 / span 1; }
+    }
+
+    input[type="text"], input[type="search"], input[type="date"], select, textarea {
+      background: #12152a; color: var(--text); border: 1px solid var(--border);
+      padding: 10px 12px; border-radius: 10px; outline: none; width: 100%;
+    }
+    [data-theme="light"] input, [data-theme="light"] select, [data-theme="light"] textarea { background: #fff; }
+    input::placeholder, textarea::placeholder { color: #9aa1b7; }
+
+    /* Requested fixed sizes */
+    #titleInput { height: 44px; line-height: 44px; font-size: clamp(14px, 3.2vw, 16px); max-width: 100%; }
+    #taskDetails { min-height: 110px; max-height: 260px; font-size: clamp(14px, 3vw, 15.5px); resize: vertical; }
+
+    .btn { padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; background: #12152a; color: var(--text); }
+    .btn.primary { background: var(--accent); color: #041225; border-color: transparent; }
+    .btn.ghost { background: transparent; color: var(--text); }
+    .btn.danger { background: var(--danger); color: #1c0b0b; border-color: transparent;}
+
+    /* ===== TASK LIST ===== */
+    .list { list-style: none; margin: 12px 0 100px; padding: 0; }
+    .item { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 12px; border-bottom: 1px dashed var(--border); cursor: grab; }
+    .item:last-child { border-bottom: none; }
+    .item.drag-over { outline: 2px dashed var(--accent); outline-offset: 6px; border-radius: 12px; }
+    .item:active { cursor: grabbing; }
+
+    /* Left mark (checkbox) */
+    .mark { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 8px; border: 1px solid var(--border); background: #11152a; cursor: pointer; }
+    .mark input { accent-color: var(--accent-2); width: 18px; height: 18px; }
+
+    /* Center title — ellipsis if long */
+    .title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .title.done { text-decoration: line-through; color: var(--muted); }
+
+    /* Right side */
+    .row-right { display: inline-flex; align-items: center; gap: 6px; }
+    .badge { font-size: 12px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+    .badge.green { color: #0fd4a5; border-color: #115544; background: #0f2a22; }
+    .priority { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 8px; color: #0b0b0b; }
+    .p-high  { background: var(--prio-high); color: #fff; }
+    .p-med   { background: var(--prio-med);  color: #000; }
+    .p-low   { background: var(--prio-low);  color: #000; }
+
+    .icon { padding: 8px 10px; border-radius: 999px; border: 1px solid var(--border); background: #11152a; color: var(--text); cursor: pointer; }
+    .icon.info { width: 34px; height: 34px; display: grid; place-items: center; font-weight: 700; }
+
+    .err { color: var(--danger); margin: 8px 0 0; }
+    .foot { color: var(--muted); margin-bottom: 30px; }
+
+    @media (hover: hover) { .item:hover { background: rgba(255,255,255,0.03); border-radius: 12px; } }
+
+    /* ===== DIALOG ===== */
+    dialog::backdrop { background: rgba(0,0,0,.5); }
+    dialog.dialog { border: none; padding: 0; background: transparent; }
+    .dialog-card { width: min(720px, calc(100vw - 24px)); background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; }
+    .dlg-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+    .dlg-title { font-size: 18px; margin: 0; }
+    .dlg-body { padding: 14px 16px; }
+    .kv { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+    .kv strong { color: var(--text); font-weight: 600; }
+    .full-details { white-space: pre-wrap; color: var(--text); background: #10142a; border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-top: 8px; max-height: 40vh; overflow: auto; }
+    .edit-grid { display: grid; gap: 10px; grid-template-columns: 1fr; }
+    .dlg-foot { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <header class="wrap">
+    <h1>
+      ✅ Todo List
+      <span class="row gap">
+        <button id="remindersBtn" class="pill" title="Enable reminders" hidden>🔔 Enable Reminders</button>
+        <button id="themeToggle" class="pill" title="Toggle theme">🌙</button>
+      </span>
+    </h1>
+    <p class="sub">Cool, responsive UI · Priorities · Drag & drop · Reminders</p>
+  </header>
+
+  <main class="wrap">
+    <!-- Add form -->
+    <form id="addForm" class="card">
+      <input id="titleInput" type="text" placeholder="Enter Task Title" autocomplete="off" required />
+      <textarea id="taskDetails" placeholder="Enter task details"></textarea>
+      <input id="dueInput" type="date" />
+      <select id="priorityInput" title="Priority">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+      </select>
+      <button type="submit" class="btn primary">Add</button>
+      <span id="err" class="err" role="alert" aria-live="polite"></span>
+    </form>
+
+    <!-- List -->
+    <ul id="taskList" class="list card" aria-live="polite"></ul>
+  </main>
+
+  <footer class="wrap foot">
+    <small>Tip: Tap the left checkbox to mark done. Tap ⓘ to view/edit details. Drag an item to reorder. Allow notifications to get due reminders.</small>
+  </footer>
+
+  <!-- Details / Edit Dialog -->
+  <dialog id="taskDialog" class="dialog">
+    <div class="dialog-card" role="document">
+      <header class="dlg-head">
+        <h2 class="dlg-title" id="dlgTitle">Task</h2>
+        <button type="button" class="icon" id="dlgClose" aria-label="Close">✕</button>
+      </header>
+      <section class="dlg-body">
+        <div id="dlgView">
+          <div class="kv">Priority: <strong id="dlgPriority">—</strong></div>
+          <div class="kv">Due: <strong id="dlgDue">—</strong></div>
+          <div class="kv">Created: <strong id="dlgCreated">—</strong></div>
+          <div class="kv">Completed: <strong id="dlgDone">No</strong></div>
+          <div class="full-details" id="dlgDetails">No details</div>
+        </div>
+
+        <div id="dlgEdit" hidden>
+          <div class="edit-grid">
+            <input id="editTitle" type="text" placeholder="Title" />
+            <textarea id="editDetails" placeholder="Details"></textarea>
+            <input id="editDate" type="date" />
+            <select id="editPriority">
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+        </div>
+      </section>
+      <footer class="dlg-foot">
+        <button type="button" class="btn" id="dlgToggleEdit">Edit</button>
+        <button type="button" class="btn primary" id="dlgSave" hidden>Save</button>
+        <button type="button" class="btn danger" id="dlgDelete">Remove</button>
+        <button type="button" class="btn ghost" id="dlgClose2">Close</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <script type="module">
+    // ===== Firebase (v9 modular) =====
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+    import { getDatabase, ref, push, onValue, update, remove } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js';
+
+    // Your config (from your project)
+    const firebaseConfig = {
+      apiKey: "AIzaSyDgtyOrOOq9pZG481K8WADRLF0H2Nya5F0",
+      authDomain: "my-test-c5cbb.firebaseapp.com",
+      databaseURL: "https://my-test-c5cbb-default-rtdb.firebaseio.com",
+      projectId: "my-test-c5cbb",
+      storageBucket: "my-test-c5cbb.appspot.com",
+      messagingSenderId: "1054365782560",
+      appId: "1:1054365782560:web:73871594f49935849b2245"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // ===== DOM =====
+    const addForm = document.getElementById('addForm');
+    const titleInput = document.getElementById('titleInput');
+    const taskDetails = document.getElementById('taskDetails');
+    const dueInput = document.getElementById('dueInput');
+    const priorityInput = document.getElementById('priorityInput');
+    const taskList = document.getElementById('taskList');
+    const errEl = document.getElementById('err');
+
+    const themeToggle = document.getElementById('themeToggle');
+    const remindersBtn = document.getElementById('remindersBtn');
+
+    const dlg = document.getElementById('taskDialog');
+    const dlgTitle = document.getElementById('dlgTitle');
+    const dlgPriority = document.getElementById('dlgPriority');
+    const dlgDue = document.getElementById('dlgDue');
+    const dlgCreated = document.getElementById('dlgCreated');
+    const dlgDone = document.getElementById('dlgDone');
+    const dlgDetails = document.getElementById('dlgDetails');
+    const dlgView = document.getElementById('dlgView');
+    const dlgEdit = document.getElementById('dlgEdit');
+    const editTitle = document.getElementById('editTitle');
+    const editDetails = document.getElementById('editDetails');
+    const editDate = document.getElementById('editDate');
+    const editPriority = document.getElementById('editPriority');
+    const dlgToggleEdit = document.getElementById('dlgToggleEdit');
+    const dlgSave = document.getElementById('dlgSave');
+    const dlgDelete = document.getElementById('dlgDelete');
+    const dlgClose = document.getElementById('dlgClose');
+    const dlgClose2 = document.getElementById('dlgClose2');
+
+    // ===== State =====
+    let tasks = []; // { id, title, details?, completed, createdAt, dueDate?, priority, orderIndex }
+    let activeTaskId = null;
+
+    // Reminder scheduling state
+    const scheduled = new Map(); // id -> timeoutId
+    const notified = new Set(JSON.parse(localStorage.getItem('notifiedTasks') || '[]'));
+    function saveNotified(){ localStorage.setItem('notifiedTasks', JSON.stringify(Array.from(notified))); }
+
+    // ===== Helpers =====
+    const clean = (s) => (s || '').trim();
+    const toMs = (dateStr) => {
+      if (!dateStr) return null;
+      const dt = new Date(dateStr + 'T00:00:00');
+      return isNaN(dt) ? null : dt.getTime();
+    };
+    const fmtDate = (ms) => {
+      if (!ms) return '';
+      const d = new Date(ms);
+      return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+
+    const tasksRef = ref(db, 'tasks');
+
+    // ===== Live subscription =====
+    onValue(tasksRef, (snap) => {
+      const val = snap.val() || {};
+      tasks = Object.entries(val).map(([id, v]) => ({ id, ...v }));
+      render();
+      scheduleReminders();
+    }, (err) => {
+      console.error(err);
+      showError('Realtime subscription failed.');
+    });
+
+    function showError(msg){ errEl.textContent = msg || ''; }
+
+    // ===== Add Task =====
+    addForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      showError('');
+      try {
+        const title = clean(titleInput.value);
+        if (!title) { showError('Please enter a title.'); return; }
+        const details = clean(taskDetails.value);
+        const dueDate = toMs(dueInput.value);
+        const priority = priorityInput.value || 'medium';
+        const maxOrder = Math.max(-1, ...tasks.map(t => t.orderIndex ?? -1));
+
+        const newTask = {
+          title,
+          ...(details ? { details } : {}),
+          completed: false,
+          createdAt: Date.now(),
+          ...(dueDate ? { dueDate } : {}),
+          priority,
+          orderIndex: maxOrder + 1
+        };
+        await push(tasksRef, newTask);
+
+        // reset
+        titleInput.value = '';
+        taskDetails.value = '';
+        dueInput.value = '';
+        priorityInput.value = 'medium';
+
+        // Ask for reminders if relevant
+        maybePromptReminders();
+      } catch (err) {
+        console.error(err);
+        showError('Add failed.');
+      }
+    });
+
+    // ===== Render =====
+    function render(){
+      // sort by orderIndex (fallback: createdAt)
+      const view = tasks.slice().sort((a,b)=> (a.orderIndex??a.createdAt) - (b.orderIndex??b.createdAt));
+      taskList.innerHTML = '';
+      if (!view.length) {
+        const li = document.createElement('li');
+        li.className = 'item';
+        li.innerHTML = '<span class="title" style="color: var(--muted);">No tasks yet</span>';
+        taskList.appendChild(li);
+        return;
+      }
+
+      for (const t of view) {
+        const li = document.createElement('li');
+        li.className = 'item';
+        li.dataset.id = t.id;
+        li.draggable = true;
+
+        // Left mark
+        const mark = document.createElement('label');
+        mark.className = 'mark';
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.checked = !!t.completed;
+        chk.title = 'Mark done';
+        mark.appendChild(chk);
+
+        // Center title
+        const title = document.createElement('div');
+        title.className = 'title' + (t.completed ? ' done' : '');
+        title.textContent = t.title || '(untitled)';
+
+        // Right
+        const right = document.createElement('div');
+        right.className = 'row-right';
+
+        // priority badge
+        const pr = (t.priority||'medium');
+        const prBadge = document.createElement('span');
+        prBadge.className = 'priority p-' + (pr==='high'?'high':pr==='low'?'low':'med');
+        prBadge.textContent = pr;
+        right.appendChild(prBadge);
+
+        // date badge
+        const when = document.createElement('span');
+        when.className = 'badge' + (t.dueDate ? ' green' : '');
+        let whenText = t.dueDate ? `Due ${fmtDate(t.dueDate)}` : `Added ${fmtDate(t.createdAt)}`;
+        const now = Date.now();
+        if (t.dueDate && t.dueDate < now) whenText = `Overdue · ${fmtDate(t.dueDate)}`;
+        when.textContent = whenText;
+        right.appendChild(when);
+
+        // info icon
+        const info = document.createElement('button');
+        info.type = 'button';
+        info.className = 'icon info';
+        info.title = 'Details';
+        info.setAttribute('aria-label','Details');
+        info.textContent = 'ⓘ';
+        right.appendChild(info);
+
+        li.append(mark, title, right);
+        taskList.appendChild(li);
+      }
+    }
+
+    // ===== Item interactions =====
+    // Toggle complete
+    taskList.addEventListener('change', async (e) => {
+      if (e.target.type !== 'checkbox') return;
+      const li = e.target.closest('li.item'); if (!li) return;
+      const id = li.dataset.id;
+      try { await update(ref(db, `tasks/${id}`), { completed: e.target.checked }); }
+      catch (err) { console.error(err); showError('Toggle failed.'); }
+    });
+
+    // Open dialog
+    taskList.addEventListener('click', (e) => {
+      if (!e.target.matches('button.icon.info')) return;
+      const li = e.target.closest('li.item'); if (!li) return;
+      const id = li.dataset.id;
+      const t = tasks.find(x => x.id === id); if (!t) return;
+      activeTaskId = id;
+      populateDialog(t);
+      openDialog();
+    });
+
+    function populateDialog(t){
+      dlgTitle.textContent = t.title || '(untitled)';
+      dlgPriority.textContent = t.priority || 'medium';
+      dlgDue.textContent = t.dueDate ? fmtDate(t.dueDate) : '—';
+      dlgCreated.textContent = t.createdAt ? fmtDate(t.createdAt) : '—';
+      dlgDone.textContent = t.completed ? 'Yes' : 'No';
+      dlgDetails.textContent = t.details || 'No details';
+
+      editTitle.value = t.title || '';
+      editDetails.value = t.details || '';
+      editDate.value = t.dueDate ? new Date(t.dueDate).toISOString().slice(0,10) : '';
+      editPriority.value = t.priority || 'medium';
+
+      dlgView.hidden = false; dlgEdit.hidden = true; dlgSave.hidden = true; dlgToggleEdit.textContent = 'Edit';
+    }
+    function openDialog(){ if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open',''); }
+    function closeDialog(){ if (dlg.close) dlg.close(); else dlg.removeAttribute('open'); activeTaskId = null; }
+
+    dlgToggleEdit.addEventListener('click', () => {
+      const isEditing = !dlgEdit.hidden;
+      if (isEditing){ dlgEdit.hidden = true; dlgView.hidden = false; dlgSave.hidden = true; dlgToggleEdit.textContent = 'Edit'; }
+      else { dlgEdit.hidden = false; dlgView.hidden = true; dlgSave.hidden = false; dlgToggleEdit.textContent = 'Cancel Edit'; }
+    });
+
+    dlgSave.addEventListener('click', async () => {
+      if (!activeTaskId) return;
+      const id = activeTaskId;
+      const newTitle = clean(editTitle.value);
+      if (!newTitle){ alert('Title is required.'); return; }
+      const patch = {
+        title: newTitle,
+        details: clean(editDetails.value),
+        priority: editPriority.value,
+        dueDate: clean(editDate.value) ? toMs(editDate.value) : null
+      };
+      try {
+        await update(ref(db, `tasks/${id}`), patch);
+        const t = tasks.find(x => x.id === id);
+        if (t) populateDialog({ ...t, ...patch });
+        dlgEdit.hidden = true; dlgView.hidden = false; dlgSave.hidden = true; dlgToggleEdit.textContent = 'Edit';
+        scheduleReminders();
+      } catch (err) { console.error(err); alert('Update failed.'); }
+    });
+
+    dlgDelete.addEventListener('click', async () => {
+      if (!activeTaskId) return;
+      if (!confirm('Delete this task?')) return;
+      try { await remove(ref(db, `tasks/${activeTaskId}`)); closeDialog(); }
+      catch (err) { console.error(err); alert('Delete failed.'); }
+    });
+
+    dlgClose.addEventListener('click', closeDialog);
+    dlgClose2.addEventListener('click', closeDialog);
+
+    // ===== Drag to reorder =====
+    let dragId = null;
+    taskList.addEventListener('dragstart', (e) => {
+      const li = e.target.closest('li.item'); if (!li) return; dragId = li.dataset.id; e.dataTransfer.effectAllowed = 'move'; });
+    taskList.addEventListener('dragenter', (e) => { const li = e.target.closest('li.item'); if (li) li.classList.add('drag-over'); });
+    taskList.addEventListener('dragleave', (e) => { const li = e.target.closest('li.item'); if (li) li.classList.remove('drag-over'); });
+    taskList.addEventListener('dragover', (e) => e.preventDefault());
+    taskList.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      const toLi = e.target.closest('li.item'); if (!toLi) return;
+      toLi.classList.remove('drag-over');
+      const dropId = toLi.dataset.id; if (!dragId || !dropId || dragId === dropId) return;
+      // Build order id list from current DOM
+      const ids = Array.from(taskList.querySelectorAll('li.item')).map(li => li.dataset.id);
+      // Move dragId before dropId
+      const from = ids.indexOf(dragId); const to = ids.indexOf(dropId);
+      ids.splice(to, 0, ids.splice(from,1)[0]);
+      // Persist new order
+      for (let i = 0; i < ids.length; i++) {
+        try { await update(ref(db, `tasks/${ids[i]}`), { orderIndex: i }); } catch {}
+      }
+      dragId = null;
+    });
+
+    // ===== Theme toggle =====
+    function setTheme(theme){ document.documentElement.setAttribute('data-theme', theme); localStorage.setItem('theme', theme); themeToggle.textContent = theme === 'dark' ? '🌙' : '☀️'; }
+    themeToggle.addEventListener('click', () => { const cur = document.documentElement.getAttribute('data-theme'); setTheme(cur === 'dark' ? 'light' : 'dark'); });
+    const savedTheme = localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    setTheme(savedTheme);
+
+    // ===== Reminders (Notification API) =====
+    function canNotify(){ return 'Notification' in window; }
+    function permission(){ return canNotify() ? Notification.permission : 'denied'; }
+    function requestPermission(){ if (!canNotify()) return Promise.resolve('denied'); return Notification.requestPermission().then(p => { updateReminderUI(); return p; }); }
+    function updateReminderUI(){
+      remindersBtn.hidden = !canNotify() || Notification.permission === 'granted';
+      remindersBtn.textContent = '🔔 Enable Reminders';
+      remindersBtn.disabled = Notification.permission === 'denied';
+    }
+
+    remindersBtn.addEventListener('click', () => requestPermission());
+
+    function maybePromptReminders(){
+      if (!canNotify()) return;
+      // prompt if there's at least one task with due within 24h and permission default
+      const soon = tasks.some(t => t.dueDate && !t.completed && (t.dueDate - Date.now()) > 0 && (t.dueDate - Date.now()) <= 24*60*60*1000);
+      if (soon && Notification.permission === 'default') requestPermission();
+    }
+
+    function showReminder(t){
+      if (!canNotify() || Notification.permission !== 'granted') return;
+      const body = [t.details ? t.details : '', t.dueDate ? ('Due ' + fmtDate(t.dueDate)) : ''].filter(Boolean).join('\n');
+      const n = new Notification(`Task: ${t.title}`, { body });
+      notified.add(t.id); saveNotified();
+      n.onclick = () => window.focus();
+    }
+
+    function scheduleReminders(){
+      if (!canNotify() || Notification.permission !== 'granted') { updateReminderUI(); return; }
+      updateReminderUI();
+      const DAY = 24*60*60*1000; const now = Date.now();
+      // clear stale timers for missing tasks
+      for (const [id, tid] of Array.from(scheduled.entries())){
+        if (!tasks.find(t => t.id === id)) { clearTimeout(tid); scheduled.delete(id); }
+      }
+      for (const t of tasks){
+        if (!t.dueDate || t.completed) continue;
+        // Already notified for this id? (basic guard)
+        if (notified.has(t.id)) continue;
+        const delta = t.dueDate - now;
+        if (delta <= 0 && Math.abs(delta) <= DAY){ // overdue within a day → notify once on load
+          showReminder(t);
+          continue;
+        }
+        if (delta > 0 && delta <= DAY){
+          // schedule if not already
+          if (!scheduled.has(t.id)){
+            const tid = setTimeout(() => { showReminder(t); scheduled.delete(t.id); }, delta);
+            scheduled.set(t.id, tid);
+          }
+        }
+      }
+    }
+
+    // On load
+    updateReminderUI();
+    if (permission() === 'granted') scheduleReminders();
+    // Re-check window every 15 minutes
+    setInterval(scheduleReminders, 15*60*1000);
+
+    // Autofocus first input
+    titleInput.focus();
+  </script>
+</body>
+</html>

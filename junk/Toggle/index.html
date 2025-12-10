@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Toggle UI</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .card {
+      width: 300px;
+      padding: 20px;
+      border-radius: 10px;
+      background-color: #f0f0f0;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      transition: background-color 0.3s;
+    }
+
+    .card.active {
+      background-color: #d1eaff;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      background-color: #007BFF;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card" id="cardBox">
+    <h2>Hello, UI!</h2>
+    <p>This box toggles color on click.</p>
+  </div>
+
+  <button onclick="toggleCard()">Toggle</button>
+
+  <script>
+    function toggleCard() {
+      document.getElementById('cardBox').classList.toggle('active');
+    }
+  </script>
+  
+  <script>/* Script 2
+  function toggleCard() {
+  const card = document.getElementById('cardBox');
+  const body = document.body;
+
+  card.classList.toggle('active');
+
+  if (card.classList.contains('active')) {
+    body.style.backgroundColor = '#d1eaff'; // light blue when active
+  } else {
+    body.style.backgroundColor = '#ffffff'; // white when inactive
+  }
+}*/
+ </script>
+  
+</body>
+</html>
