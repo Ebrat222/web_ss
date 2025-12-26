@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo List with Firebase</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase and FirebaseUI -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.css" />
+</head>
+<body>
+    <div class="container">
+        <!-- Auth Section -->
+        <div id="auth-section" class="auth-section">
+            <div class="auth-container">
+                <h1><i class="fas fa-tasks"></i> Todo List</h1>
+                <p>Sign in to manage your todos</p>
+                <div id="firebaseui-auth-container"></div>
+            </div>
+        </div>
+
+        <!-- Main App (hidden until authenticated) -->
+        <div id="app" class="app-container hidden">
+            <!-- Header -->
+            <header class="app-header">
+                <h1><i class="fas fa-tasks"></i> Todo List</h1>
+                <div class="user-info">
+                    <img id="user-photo" src="" alt="User Photo" class="user-photo">
+                    <span id="user-name"></span>
+                    <button id="sign-out" class="btn btn-secondary">
+                        <i class="fas fa-sign-out-alt"></i> Sign Out
+                    </button>
+                </div>
+            </header>
+
+            <!-- Controls Section -->
+            <div class="controls">
+                <!-- Add Todo Form -->
+                <div class="add-todo-card">
+                    <h3><i class="fas fa-plus-circle"></i> Add New Task</h3>
+                    <form id="todo-form">
+                        <div class="form-group">
+                            <input type="text" id="title" placeholder="Task Title" required>
+                        </div>
+                        <div class="form-group">
+                            <textarea id="description" placeholder="Task Description"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="dueDate"><i class="fas fa-calendar"></i> Due Date:</label>
+                            <input type="date" id="dueDate">
+                        </div>
+                        <div class="form-group">
+                            <label for="priority"><i class="fas fa-flag"></i> Priority:</label>
+                            <select id="priority">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Add Task
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Search and Sort Controls -->
+                <div class="filter-controls">
+                    <!-- Search -->
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="search-input" placeholder="Search tasks...">
+                    </div>
+
+                    <!-- Sort Options -->
+                    <div class="sort-options">
+                        <label><i class="fas fa-sort"></i> Sort By:</label>
+                        <select id="sort-select">
+                            <option value="date-newest">Date (Newest First)</option>
+                            <option value="date-oldest">Date (Oldest First)</option>
+                            <option value="name-az">Name (A-Z)</option>
+                            <option value="name-za">Name (Z-A)</option>
+                            <option value="priority">Priority</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter by Priority -->
+                    <div class="priority-filter">
+                        <button class="filter-btn active" data-priority="all">All</button>
+                        <button class="filter-btn" data-priority="high">High</button>
+                        <button class="filter-btn" data-priority="medium">Medium</button>
+                        <button class="filter-btn" data-priority="low">Low</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Todo List -->
+            <div class="todo-list-container">
+                <h2><i class="fas fa-list-check"></i> Your Tasks</h2>
+                <div id="todo-list" class="todo-list">
+                    <!-- Todos will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats">
+                <div class="stat-card">
+                    <i class="fas fa-tasks"></i>
+                    <span class="stat-count" id="total-tasks">0</span>
+                    <span class="stat-label">Total Tasks</span>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-check-circle"></i>
+                    <span class="stat-count" id="completed-tasks">0</span>
+                    <span class="stat-label">Completed</span>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-clock"></i>
+                    <span class="stat-count" id="pending-tasks">0</span>
+                    <span class="stat-label">Pending</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Modal -->
+        <div id="edit-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3><i class="fas fa-edit"></i> Edit Task</h3>
+                <form id="edit-form">
+                    <input type="hidden" id="edit-id">
+                    <div class="form-group">
+                        <input type="text" id="edit-title" placeholder="Task Title" required>
+                    </div>
+                    <div class="form-group">
+                        <textarea id="edit-description" placeholder="Task Description"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-dueDate"><i class="fas fa-calendar"></i> Due Date:</label>
+                        <input type="date" id="edit-dueDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-priority"><i class="fas fa-flag"></i> Priority:</label>
+                        <select id="edit-priority">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="submit" class="btn btn-primary">Update Task</button>
+                        <button type="button" id="cancel-edit" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/todo.js"></script>
+</body>
+</html>
